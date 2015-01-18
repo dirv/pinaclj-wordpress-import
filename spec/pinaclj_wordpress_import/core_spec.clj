@@ -30,3 +30,24 @@
   (it "uses post-parent for inherited revisions"
     (should= 101 (post-id later-post))))
 
+(def post-a 
+  {:id 102 :post-date-gmt (t/date-time 2015 1 18)})
+(def post-a-rev 
+  {:post-date-gmt (t/date-time 2015 1 19) :post-type "revision" :post-parent 102})
+(def post-b 
+  {:id 103 :post-date-gmt (t/date-time 2015 1 18)})
+(def post-b-rev 
+  {:post-date-gmt (t/date-time 2015 1 19) :post-type "revision" :post-parent 103})
+
+(describe "latest-posts"
+  (it "returns latest of all posts"
+    (should== [post-a-rev post-b-rev] (latest-posts [post-a post-a-rev post-b post-b-rev]))))
+
+(describe "to page"
+  (it "outputs published-at date"
+    (should-contain "published-at: 2015-01-18T10:00:00.000Z\n" (to-page later-post))),
+  (it "outputs title"
+    (should-contain "title: Test\n" (to-page later-post)))
+  (it "outputs page content after break"
+    (should-contain "\n\nTesting 2\n" (to-page later-post))))
+
