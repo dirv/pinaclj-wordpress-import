@@ -1,0 +1,6 @@
+* Use JimFS to save out files to disk.
+  Filename can be WordPress ID for now.
+
+* Connect to MySQL and pull out all records in correct format.
+
+* Add support for drafts.
