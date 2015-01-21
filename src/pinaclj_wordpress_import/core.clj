@@ -1,4 +1,5 @@
-(ns pinaclj-wordpress-import.core)
+(ns pinaclj-wordpress-import.core
+  (:import (java.nio.file FileSystems Files LinkOption StandardOpenOption OpenOption)))
 
 (defn latest-post [posts]
   (first (reverse (sort-by :post-date-gmt posts))))
@@ -24,4 +25,19 @@
        (:post-content post)
        "\n"))
 
+(defn get-path [fs path-str]
+  (.getPath fs path-str (into-array String [])))
 
+(defn get-page-path [fs id]
+  (get-path fs (str id ".pina")))
+
+(defn- as-bytes [st]
+  (bytes (byte-array (map byte st))))
+
+(defn- create-file [path content]
+  (Files/write path
+               (as-bytes content)
+               (into-array OpenOption [StandardOpenOption/CREATE])))
+
+(defn write-page [fs id page]
+  (create-file (get-page-path fs id) page))
