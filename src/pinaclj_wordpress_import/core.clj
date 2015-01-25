@@ -1,5 +1,6 @@
 (ns pinaclj-wordpress-import.core
-  (:require [clojure.java.jdbc :as sql])
+  (:require [clojure.java.jdbc :as sql]
+            [clj-time.coerce :as tc])
   (:import (java.nio.file FileSystems Files LinkOption StandardOpenOption OpenOption)))
 
 (defn latest-post [posts]
@@ -43,5 +44,13 @@
 (defn write-page [fs id page]
   (create-file (get-page-path fs id) page))
 
+(defn- to-post [record]
+  {:id (:id record)
+   :post-date-gmt (tc/from-sql-time (:post_date_gmt record))
+   :post-title (:post_title record)
+   :post-content (:post_content record)
+   :post-status (:post_status record)
+   :post-type (:post_type record)})
+
 (defn read-db [db-conn]
-  (sql/query db-conn ["select * from wp_posts"]))
+  (map to-post (sql/query db-conn ["select * from wp_posts"])))

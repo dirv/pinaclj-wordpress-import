@@ -104,8 +104,15 @@
   (doseq [post [post-a post-a-rev post-b post-b-rev]]
     (sql/insert! db-conn :wp_posts (to-record post))))
 
+(defn- remove-nils [post]
+  (into {} (filter second post)))
+
 (describe "read-db"
   (it "reads all posts in database table"
       (sql/with-db-connection [db-conn db]
         (set-up-db db-conn)
-        (should= 4 (count (read-db db-conn))))))
+        (should= 4 (count (read-db db-conn)))))
+  (it "restores expected record structure"
+      (sql/with-db-connection [db-conn db]
+        (set-up-db db-conn)
+        (should= post-a (remove-nils (first (read-db db-conn)))))))
