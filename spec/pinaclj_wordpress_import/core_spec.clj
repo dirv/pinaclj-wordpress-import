@@ -2,10 +2,19 @@
   (:require [speclj.core :refer :all]
             [clojure.java.jdbc :as sql]
             [clj-time.core :as t]
+            [clj-time.format :as tf]
             [pinaclj-wordpress-import.core :refer :all])
   (:import (com.google.common.jimfs Jimfs Configuration)
            (java.nio.file Files LinkOption)
            (java.nio.charset StandardCharsets)))
+
+(defn- to-record [post]
+  {:id (:id post)
+   :post_date_gmt (tf/unparse (tf/formatters :mysql) (:post-date-gmt post))
+   :post_title (:post-title post)
+   :post_content (:post-content post)
+   :post_status (:post-status post)
+   :post_type (:post-type post)})
 
 (def sample-post
   {:id 101
@@ -35,13 +44,13 @@
     (should= 101 (post-id later-post))))
 
 (def post-a
-  {:id 102 :post_date_gmt (t/date-time 2015 1 18)})
+  {:id 102 :post-date-gmt (t/date-time 2015 1 18)})
 (def post-a-rev
-  {:post-date-gmt (t/date-time 2015 1 19) :post-type "revision" :post-parent 102})
+  {:id 104 :post-date-gmt (t/date-time 2015 1 19) :post-type "revision" :post-parent 102})
 (def post-b
   {:id 103 :post-date-gmt (t/date-time 2015 1 18)})
 (def post-b-rev
-  {:post-date-gmt (t/date-time 2015 1 19) :post-type "revision" :post-parent 103})
+  {:id 105 :post-date-gmt (t/date-time 2015 1 19) :post-type "revision" :post-parent 103})
 
 (describe "latest-posts"
   (it "returns latest of all posts"
@@ -92,10 +101,11 @@
                                             [:post_date_gmt :datetime]
                                             [:post_status "varchar(20)"]
                                             [:post_type "varchar(20)"]))
-  (sql/insert! db-conn :wp_posts {:id 123 :post_date_gmt "2015-01-31 10:00:00"}))
+  (doseq [post [post-a post-a-rev post-b post-b-rev]]
+    (sql/insert! db-conn :wp_posts (to-record post))))
 
 (describe "read-db"
-  (it "reads a db page"
+  (it "reads all posts in database table"
       (sql/with-db-connection [db-conn db]
         (set-up-db db-conn)
-        (should= 1 (count (read-db db-conn))))))
+        (should= 4 (count (read-db db-conn))))))
