@@ -1,4 +1,5 @@
 (ns pinaclj-wordpress-import.core
+  (:require [clojure.java.jdbc :as sql])
   (:import (java.nio.file FileSystems Files LinkOption StandardOpenOption OpenOption)))
 
 (defn latest-post [posts]
@@ -41,3 +42,6 @@
 
 (defn write-page [fs id page]
   (create-file (get-page-path fs id) page))
+
+(defn read-db [db-conn]
+  (sql/query db-conn ["select * from wp_posts"]))

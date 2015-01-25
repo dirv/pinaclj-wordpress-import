@@ -1,5 +1,6 @@
 (ns pinaclj-wordpress-import.core-spec
   (:require [speclj.core :refer :all]
+            [clojure.java.jdbc :as sql]
             [clj-time.core :as t]
             [pinaclj-wordpress-import.core :refer :all])
   (:import (com.google.common.jimfs Jimfs Configuration)
@@ -34,7 +35,7 @@
     (should= 101 (post-id later-post))))
 
 (def post-a
-  {:id 102 :post-date-gmt (t/date-time 2015 1 18)})
+  {:id 102 :post_date_gmt (t/date-time 2015 1 18)})
 (def post-a-rev
   {:post-date-gmt (t/date-time 2015 1 19) :post-type "revision" :post-parent 102})
 (def post-b
@@ -75,3 +76,26 @@
           post sample-post]
       (write-page fs (:id post) (to-page post))
       (should-contain "Testing" (content (get-page-path fs "101"))))))
+
+(def db
+  {:classname "org.h2.Driver"
+   :subprotocol "h2:mem"
+   :subname "test"
+   :create true})
+
+(defn- set-up-db [db-conn]
+  (sql/db-do-commands db-conn
+                      (sql/create-table-ddl :wp_posts
+                                            [:id :int "PRIMARY KEY"]
+                                            [:post_title :clob]
+                                            [:post_content :clob]
+                                            [:post_date_gmt :datetime]
+                                            [:post_status "varchar(20)"]
+                                            [:post_type "varchar(20)"]))
+  (sql/insert! db-conn :wp_posts {:id 123 :post_date_gmt "2015-01-31 10:00:00"}))
+
+(describe "read-db"
+  (it "reads a db page"
+      (sql/with-db-connection [db-conn db]
+        (set-up-db db-conn)
+        (should= 1 (count (read-db db-conn))))))
