@@ -60,7 +60,14 @@
 
 (defn- read-content-stream [clob-stream]
   (if-not (nil? clob-stream)
-    (first (line-seq (.getCharacterStream clob-stream)))))
+    (let [sb (StringBuilder.)
+          r (.getCharacterStream clob-stream)]
+      (loop [c (.read r)]
+        (if (neg? c)
+          (str sb)
+          (do
+            (.append sb (char c))
+            (recur (.read r))))))))
 
 (defn- to-post [record]
   {:id (:id record)

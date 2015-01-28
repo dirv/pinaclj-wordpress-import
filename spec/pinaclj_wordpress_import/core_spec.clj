@@ -38,7 +38,6 @@
   (it "returns the latest post"
     (should= later-post (latest-post [sample-post later-post]))))
 
-
 (describe "post-id"
  (it "uses id for published post"
    (should= 101 (post-id sample-post)))
@@ -54,10 +53,16 @@
 (def post-b-rev
   {:id 105 :post-date-gmt (t/date-time 2015 1 19) :post-type "revision" :post-parent 103
    :post-content "Updated" })
+(def multi-line
+  {:id 106 :post-date-gmt (t/date-time 2015 1 28) :post-content "One\nTwo\nThree\n"})
+
+(def all-pages
+  [post-a post-a-rev post-b-rev post-b multi-line])
 
 (def urls
   [{:object_type "post" :object_id 102 :url "/blog/test1"}
-   {:object_type "post" :object_id 103 :url "/blog/test2"}])
+   {:object_type "post" :object_id 103 :url "/blog/test2"}
+   {:object_type "post" :object_id 106 :url "/blog/multi"}])
 
 (describe "latest-posts"
   (it "returns latest of all posts"
@@ -117,7 +122,7 @@
                                             [:url "varchar(255)"]
                                             [:object_id :int]
                                             [:object_type "varchar(20)"]))
-  (doseq [post [post-a post-a-rev post-b-rev post-b]]
+  (doseq [post all-pages]
     (sql/insert! db-conn :wp_posts (to-record post)))
   (doseq [url urls]
     (sql/insert! db-conn :wp_urls url)))
@@ -129,7 +134,7 @@
 
 (describe "read-db"
   (it "reads all posts in database table"
-    (should= 4 (count (read-all-from-db))))
+    (should= (count all-pages) (count (read-all-from-db))))
   (it "restores expected record structure"
     (let [post (first (read-all-from-db))]
       (should= (:id post-a) (:id post))
@@ -158,4 +163,6 @@
   (it "imports all posts"
     (should= true (file-exists "test1.pina")))
   (it "imports the latest revision"
-    (should-contain "\nUpdated\n" (content (get-path test-fs "test2.pina")))))
+    (should-contain "\nUpdated\n" (content (get-path test-fs "test2.pina"))))
+  (it "imports multi-line entries"
+    (should-contain "One\nTwo\nThree\n" (content (get-path test-fs "multi.pina")))))
