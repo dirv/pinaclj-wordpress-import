@@ -37,9 +37,6 @@
 (defn get-page-path [fs id]
   (get-path fs (str id ".pina")))
 
-(defn get-page-url [post urls]
-  (:url (first (filter #(= (:object_id %) (post-id post)) urls))))
-
 (defn- as-bytes [st]
   (bytes (byte-array (map byte st))))
 
@@ -52,7 +49,13 @@
   (create-file (get-page-path fs id) page))
 
 (defn assoc-url [post urls]
-  (assoc post :post-url (get-page-url post urls)))
+  (assoc post :post-url (get urls (post-id post))))
+
+(defn- url-map-entry [url-record]
+  {(get url-record :object_id) (get url-record :url)})
+
+(defn url-map [url-records]
+  (into {} (map url-map-entry url-records)))
 
 (defn- to-post [record]
   {:id (:id record)
@@ -62,10 +65,16 @@
    :post-status (:post_status record)
    :post-type (:post_type record)})
 
+(def queries
+  {:all-posts "select * from wp_posts"
+   :post-urls "select object_id, url from wp_urls where object_type='post';" })
+
+(defn- query [id db-conn]
+  (sql/query db-conn (get queries id)))
+
 (defn read-db [db-conn]
-  (let [wp_posts (sql/query db-conn ["select * from wp_posts"])
-        wp_urls (sql/query db-conn ["select object_id, url, object_type from wp_urls where object_type='post';"])]
-    (map #(assoc-url (to-post %) wp_urls) wp_posts)))
+  (let [url-map (url-map (query :post-urls db-conn))]
+    (map #(assoc-url (to-post %) url-map) (query :all-posts db-conn))))
 
 (defn do-import [fs db-conn]
   (doseq [post (read-db db-conn)]

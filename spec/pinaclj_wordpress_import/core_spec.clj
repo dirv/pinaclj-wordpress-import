@@ -57,11 +57,6 @@
   [{:object_type "post" :object_id 102 :url "/blog/test1"}
    {:object_type "post" :object_id 103 :url "/blog/test2"}])
 
-; select object_id, url from wp_urls where object_type="post";
-(describe "get-page-url"
-   (it "outputs correct url"
-       (should= "/blog/test1" (get-page-url post-a urls))))
-
 (describe "latest-posts"
   (it "returns latest of all posts"
     (should== [post-a-rev post-b-rev] (latest-posts [post-a post-a-rev post-b post-b-rev]))))
@@ -76,10 +71,9 @@
   (it "outputs page content after break"
     (should-contain "\n\nTesting 2\n" (to-page later-post))))
 
-
 (describe "assoc-url"
    (it "associates the url"
-      (should= "/blog/test1" (:post-url (assoc-url post-a-rev urls)))))
+      (should= "/blog/test1" (:post-url (assoc-url post-a-rev (url-map urls))))))
 
 (def test-fs
   (Jimfs/newFileSystem (Configuration/unix)))
