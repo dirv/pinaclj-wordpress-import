@@ -30,6 +30,7 @@
   :post-content "Testing 2"
   :post-status "inherit"
   :post-type "revision"
+  :post-url "/blog/testing"
   :post-parent 101 })
 
 (describe "latest-post"
@@ -52,6 +53,15 @@
 (def post-b-rev
   {:id 105 :post-date-gmt (t/date-time 2015 1 19) :post-type "revision" :post-parent 103})
 
+(def urls
+  [{:object_type "post" :object_id 102 :url "/blog/test1"}
+   {:object_type "post" :object_id 103 :url "/blog/test2"}])
+
+; select object_id, url from wp_urls where object_type="post";
+(describe "get-page-url"
+   (it "outputs correct url"
+       (should= "/blog/test1" (get-page-url post-a urls))))
+
 (describe "latest-posts"
   (it "returns latest of all posts"
     (should== [post-a-rev post-b-rev] (latest-posts [post-a post-a-rev post-b post-b-rev]))))
@@ -61,9 +71,15 @@
     (should-contain "published-at: 2015-01-18T10:00:00.000Z\n" (to-page later-post))),
   (it "outputs title"
     (should-contain "title: Test\n" (to-page later-post)))
+  (it "outputs url"
+    (should-contain "url: /blog/testing\n" (to-page later-post)))
   (it "outputs page content after break"
     (should-contain "\n\nTesting 2\n" (to-page later-post))))
 
+
+(describe "assoc-url"
+   (it "associates the url"
+      (should= "/blog/test1" (:post-url (assoc-url post-a-rev urls)))))
 
 (def test-fs
   (Jimfs/newFileSystem (Configuration/unix)))
@@ -100,9 +116,15 @@
                                             [:post_content :clob]
                                             [:post_date_gmt :datetime]
                                             [:post_status "varchar(20)"]
-                                            [:post_type "varchar(20)"]))
+                                            [:post_type "varchar(20)"])
+                      (sql/create-table-ddl :wp_urls
+                                            [:url "varchar(255)"]
+                                            [:object_id :int]
+                                            [:object_type "varchar(20)"]))
   (doseq [post [post-a post-a-rev post-b post-b-rev]]
-    (sql/insert! db-conn :wp_posts (to-record post))))
+    (sql/insert! db-conn :wp_posts (to-record post)))
+  (doseq [url urls]
+    (sql/insert! db-conn :wp_urls url)))
 
 (defn- remove-nils [post]
   (into {} (filter second post)))
@@ -115,4 +137,17 @@
   (it "restores expected record structure"
       (sql/with-db-connection [db-conn db]
         (set-up-db db-conn)
-        (should= post-a (remove-nils (first (read-db db-conn)))))))
+        (let [post (first (read-db db-conn))]
+          (should= (:id post-a) (:id post))
+          (should= (:post-date-gmt post-a) (:post-date-gmt post)))))
+  (it "associates posts with urls"
+      (sql/with-db-connection [db-conn db]
+        (set-up-db db-conn)
+        (should= "/blog/test1" (:post-url (first (read-db db-conn)))))))
+
+(describe "do-import"
+   (it "imports all posts"
+       (let [fs (create-file-system)]
+         (sql/with-db-connection [db-conn db]
+           (set-up-db db-conn)
+           (do-import fs db-conn)))))

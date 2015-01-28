@@ -2,6 +2,7 @@
   :description "Imports WordPress database posts into Pinaclj format"
   :url "http://github.com/dirv/pinaclj-wordpress-import"
   :dependencies [[org.clojure/clojure "1.6.0"]
+                 [org.clojure/tools.cli "0.3.1"]
                  [clj-time "0.9.0"]
                  [org.clojure/java.jdbc "0.3.6"]
                  [mysql/mysql-connector-java "5.1.34"]]
