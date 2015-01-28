@@ -63,6 +63,7 @@
    :post-title (:post_title record)
    :post-content (:post_content record)
    :post-status (:post_status record)
+   :post-parent (:post_parent record)
    :post-type (:post_type record)})
 
 (def queries
@@ -76,7 +77,10 @@
   (let [url-map (url-map (query :post-urls db-conn))]
     (map #(assoc-url (to-post %) url-map) (query :all-posts db-conn))))
 
+(defn filename [post]
+  (subs (:post-url post) (+ (.lastIndexOf (:post-url post) "/") 1)))
+
 (defn do-import [fs db-conn]
   (doseq [post (read-db db-conn)]
-    (write-page fs (:id post) (to-page post))))
+    (write-page fs (filename post) (to-page post))))
 

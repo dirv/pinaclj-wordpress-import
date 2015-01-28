@@ -5,7 +5,7 @@
             [clj-time.format :as tf]
             [pinaclj-wordpress-import.core :refer :all])
   (:import (com.google.common.jimfs Jimfs Configuration)
-           (java.nio.file Files LinkOption)
+           (java.nio.file Files LinkOption FileSystems)
            (java.nio.charset StandardCharsets)))
 
 (defn- to-record [post]
@@ -14,6 +14,7 @@
    :post_title (:post-title post)
    :post_content (:post-content post)
    :post_status (:post-status post)
+   :post_parent (:post-parent post)
    :post_type (:post-type post)})
 
 (def sample-post
@@ -72,16 +73,15 @@
     (should-contain "\n\nTesting 2\n" (to-page later-post))))
 
 (describe "assoc-url"
-   (it "associates the url"
-      (should= "/blog/test1" (:post-url (assoc-url post-a-rev (url-map urls))))))
+  (it "associates the url"
+    (should= "/blog/test1" (:post-url (assoc-url post-a-rev (url-map urls))))))
 
 (def test-fs
   (Jimfs/newFileSystem (Configuration/unix)))
 
 (defn create-file-system []
-  (let [fs test-fs]
-    (get-path fs "/test")
-    fs))
+  (get-path test-fs "/test")
+  test-fs)
 
 (defn read-all-lines [path]
   (Files/readAllLines path StandardCharsets/UTF_8))
@@ -90,11 +90,11 @@
   (clojure.string/join "\n" (read-all-lines path)))
 
 (describe "write-page"
+  (before
+    (create-file-system))
   (it "writes pages to disk"
-    (let [fs (create-file-system)
-          post sample-post]
-      (write-page fs (:id post) (to-page post))
-      (should-contain "Testing" (content (get-page-path fs "101"))))))
+      (write-page test-fs "101" (to-page sample-post))
+      (should-contain "Testing" (content (get-path test-fs "101.pina")))))
 
 (def db
   {:classname "org.h2.Driver"
@@ -109,6 +109,7 @@
                                             [:post_title :clob]
                                             [:post_content :clob]
                                             [:post_date_gmt :datetime]
+                                            [:post_parent :int]
                                             [:post_status "varchar(20)"]
                                             [:post_type "varchar(20)"])
                       (sql/create-table-ddl :wp_urls
@@ -120,28 +121,37 @@
   (doseq [url urls]
     (sql/insert! db-conn :wp_urls url)))
 
-(defn- remove-nils [post]
-  (into {} (filter second post)))
+(defn- read-all-from-db []
+  (sql/with-db-connection [db-conn db]
+    (set-up-db db-conn)
+    (read-db db-conn)))
 
 (describe "read-db"
   (it "reads all posts in database table"
-      (sql/with-db-connection [db-conn db]
-        (set-up-db db-conn)
-        (should= 4 (count (read-db db-conn)))))
+    (should= 4 (count (read-all-from-db))))
   (it "restores expected record structure"
-      (sql/with-db-connection [db-conn db]
-        (set-up-db db-conn)
-        (let [post (first (read-db db-conn))]
-          (should= (:id post-a) (:id post))
-          (should= (:post-date-gmt post-a) (:post-date-gmt post)))))
+    (let [post (first (read-all-from-db))]
+      (should= (:id post-a) (:id post))
+      (should= (:post-date-gmt post-a) (:post-date-gmt post))))
   (it "associates posts with urls"
-      (sql/with-db-connection [db-conn db]
-        (set-up-db db-conn)
-        (should= "/blog/test1" (:post-url (first (read-db db-conn)))))))
+    (should= "/blog/test1" (:post-url (first (read-all-from-db))))))
+
+(describe "filename"
+  (it "uses the last portion of the wordpress url as the filename"
+    (should= "testing" (filename later-post))))
+
+(defn- import-all []
+  (sql/with-db-connection [db-conn db]
+    (set-up-db db-conn)
+    (do-import test-fs db-conn)))
+
+(defn- file-exists [path-str]
+  (Files/exists (get-path test-fs path-str)
+                (into-array LinkOption [])))
 
 (describe "do-import"
-   (it "imports all posts"
-       (let [fs (create-file-system)]
-         (sql/with-db-connection [db-conn db]
-           (set-up-db db-conn)
-           (do-import fs db-conn)))))
+  (before
+    (create-file-system)
+    (import-all))
+  (it "imports all posts"
+    (should= true (file-exists "test1.pina"))))
