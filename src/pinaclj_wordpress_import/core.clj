@@ -1,7 +1,8 @@
 (ns pinaclj-wordpress-import.core
   (:require [clojure.java.jdbc :as sql]
             [clj-time.coerce :as tc])
-  (:import (java.nio.file FileSystems Files LinkOption StandardOpenOption OpenOption)))
+  (:import (java.nio.file FileSystems Files LinkOption StandardOpenOption OpenOption)
+           (java.io BufferedReader)))
 
 (defn latest-post [posts]
   (first (reverse (sort-by :post-date-gmt posts))))
@@ -57,11 +58,15 @@
 (defn url-map [url-records]
   (into {} (map url-map-entry url-records)))
 
+(defn- read-content-stream [clob-stream]
+  (if-not (nil? clob-stream)
+    (first (line-seq (.getCharacterStream clob-stream)))))
+
 (defn- to-post [record]
   {:id (:id record)
    :post-date-gmt (tc/from-sql-time (:post_date_gmt record))
    :post-title (:post_title record)
-   :post-content (:post_content record)
+   :post-content (read-content-stream (:post_content record))
    :post-status (:post_status record)
    :post-parent (:post_parent record)
    :post-type (:post_type record)})
@@ -70,12 +75,12 @@
   {:all-posts "select * from wp_posts"
    :post-urls "select object_id, url from wp_urls where object_type='post';" })
 
-(defn- query [id db-conn]
-  (sql/query db-conn (get queries id)))
+(defn- query [id db-conn row-fn]
+  (sql/query db-conn [(get queries id)] :row-fn row-fn))
 
 (defn read-db [db-conn]
-  (let [url-map (url-map (query :post-urls db-conn))]
-    (map #(assoc-url (to-post %) url-map) (query :all-posts db-conn))))
+  (let [url-map (url-map (query :post-urls db-conn identity))]
+    (vec (map #(assoc-url % url-map) (query :all-posts db-conn to-post)))))
 
 (defn filename [post]
   (subs (:post-url post) (+ (.lastIndexOf (:post-url post) "/") 1)))

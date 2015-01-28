@@ -46,13 +46,14 @@
     (should= 101 (post-id later-post))))
 
 (def post-a
-  {:id 102 :post-date-gmt (t/date-time 2015 1 18)})
+  {:id 102 :post-date-gmt (t/date-time 2015 1 18) :post-content "test"})
 (def post-a-rev
   {:id 104 :post-date-gmt (t/date-time 2015 1 19) :post-type "revision" :post-parent 102})
 (def post-b
-  {:id 103 :post-date-gmt (t/date-time 2015 1 18)})
+  {:id 103 :post-date-gmt (t/date-time 2015 1 18) :post-content "Original"})
 (def post-b-rev
-  {:id 105 :post-date-gmt (t/date-time 2015 1 19) :post-type "revision" :post-parent 103})
+  {:id 105 :post-date-gmt (t/date-time 2015 1 19) :post-type "revision" :post-parent 103
+   :post-content "Updated" })
 
 (def urls
   [{:object_type "post" :object_id 102 :url "/blog/test1"}
@@ -116,7 +117,7 @@
                                             [:url "varchar(255)"]
                                             [:object_id :int]
                                             [:object_type "varchar(20)"]))
-  (doseq [post [post-a post-a-rev post-b post-b-rev]]
+  (doseq [post [post-a post-a-rev post-b-rev post-b]]
     (sql/insert! db-conn :wp_posts (to-record post)))
   (doseq [url urls]
     (sql/insert! db-conn :wp_urls url)))
@@ -132,7 +133,8 @@
   (it "restores expected record structure"
     (let [post (first (read-all-from-db))]
       (should= (:id post-a) (:id post))
-      (should= (:post-date-gmt post-a) (:post-date-gmt post))))
+      (should= (:post-date-gmt post-a) (:post-date-gmt post))
+      (should= (:post-content post-a) (:post-content post))))
   (it "associates posts with urls"
     (should= "/blog/test1" (:post-url (first (read-all-from-db))))))
 
@@ -154,4 +156,6 @@
     (create-file-system)
     (import-all))
   (it "imports all posts"
-    (should= true (file-exists "test1.pina"))))
+    (should= true (file-exists "test1.pina")))
+  (it "imports the latest revision"
+    (should-contain "\nUpdated\n" (content (get-path test-fs "test2.pina")))))
