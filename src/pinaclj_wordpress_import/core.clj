@@ -93,7 +93,6 @@
   (subs (:post-url post) (+ (.lastIndexOf (:post-url post) "/") 1)))
 
 (defn do-import [fs db-conn]
-  (println db-conn)
   (doseq [post (latest-posts (read-db db-conn))]
     (write-page fs (filename post) (to-page post))))
 
