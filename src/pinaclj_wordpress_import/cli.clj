@@ -1,12 +1,13 @@
 (ns pinaclj-wordpress-import.cli
-  (:requre [clojure.tools.cli :refer [parse-opts]]
-           [pinaclj-wordpress-import.core :as core])
+  (:require [clojure.tools.cli :refer [parse-opts]]
+            [clojure.java.jdbc :as sql]
+            [pinaclj-wordpress-import.core :as core])
   (:import (java.nio.file FileSystems))
   (:gen-class))
 
 (def cli-options
   [["-h" "--host <host>" "Hostname" :default "localhost"]
-   ["-db" "--database <name>" "Database"]
+   ["-d" "--database <name>" "Database" :default ""]
    ["-u" "--user <user>" "Username" :default "root"]
    ["-p" "--password <password>" "Password" :default ""]])
 
@@ -19,27 +20,28 @@
         "Options:"
         options-summary
         ""]
-       (string/join \newline)))
+       (clojure.string/join \newline)))
 
 (defn- db [host db-name user password]
   {:classname "com.mysql.jdbc.Driver"
-   :subpotocol "mysql"
+   :subprotocol "mysql"
    :subname (str "//" host "/" db-name)
    :user user
    :password password})
 
 (defn- do-import [opts]
-  (core/do-import (FileSystems/getDefault)
-                  (db (:host opts)
-                      (:db-name opts)
-                      (:user opts)
-                      (:password opts))))
+  (sql/with-db-connection [db-conn (db (:host opts)
+                                       (:database opts)
+                                       (:user opts)
+                                       (:password opts))]
+    (core/do-import (FileSystems/getDefault) db-conn)))
 
 (defn main [args]
   (let [{:keys [options summary]} (parse-opts args cli-options)]
+    (println options)
     (cond
       (:help options) (println (usage summary))
-      else (do-import options))))
+      :else (do-import options))))
 
-(defn- main [& args]
+(defn -main [& args]
   (main args))
