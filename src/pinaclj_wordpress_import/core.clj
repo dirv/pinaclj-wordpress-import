@@ -68,7 +68,7 @@
 
 (def queries
   {:all-posts "select * from wp_posts"
-   :post-urls "select object_id, url from wp_urls where object_type='post';" })
+   :post-urls "select object_id, url from wp_urls where object_type='post'" })
 
 (defn- query [id db-conn row-fn]
   (sql/query db-conn [(get queries id)] :row-fn row-fn))
