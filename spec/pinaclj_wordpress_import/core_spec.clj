@@ -35,7 +35,7 @@
   :post-parent 101 })
 
 (def draft
-  {:post-date-gmt (t/date-time 2015 1 31) 
+  {:post-date-gmt (t/date-time 2015 1 31)
    :post-content "Not yet published" })
 
 (describe "latest-post"
