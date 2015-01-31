@@ -73,12 +73,16 @@
 
 (defn read-db [db-conn]
   (let [url-map (url-map (query :post-urls db-conn identity))]
-    (vec (map #(assoc-url % url-map) (query :all-posts db-conn to-post)))))
+    (map #(assoc-url % url-map) (query :all-posts db-conn to-post))))
+
+(defn- trim-slash [post-url]
+  (subs post-url 0 (dec (count post-url))))
 
 (defn filename [post]
   (if (nil? (:post-url post))
     (str (:id post))
-    (subs (:post-url post) (+ (.lastIndexOf (:post-url post) "/") 1))))
+    (let [post-url (trim-slash (:post-url post))]
+      (subs post-url (+ (.lastIndexOf post-url "/") 1)))))
 
 (defn do-import [fs db-conn]
   (doseq [post (latest-posts (read-db db-conn))]

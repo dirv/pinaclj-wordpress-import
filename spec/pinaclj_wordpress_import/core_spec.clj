@@ -31,7 +31,7 @@
   :post-content "Testing 2"
   :post-status "inherit"
   :post-type "revision"
-  :post-url "/blog/testing"
+  :post-url "/blog/testing/"
   :post-parent 101 })
 
 (describe "latest-post"
@@ -60,9 +60,9 @@
   [post-a post-a-rev post-b post-b-rev multi-line])
 
 (def urls
-  [{:object_type "post" :object_id 102 :url "/blog/test1"}
-   {:object_type "post" :object_id 105 :url "/blog/test2"}
-   {:object_type "post" :object_id 106 :url "/blog/multi"}])
+  [{:object_type "post" :object_id 102 :url "/blog/test1/"}
+   {:object_type "post" :object_id 105 :url "/blog/test2/"}
+   {:object_type "post" :object_id 106 :url "/blog/multi/"}])
 
 (describe "latest-posts"
   (it "returns latest of all posts"
@@ -74,13 +74,13 @@
   (it "outputs title"
     (should-contain "title: Test\n" (to-page later-post)))
   (it "outputs url"
-    (should-contain "url: /blog/testing\n" (to-page later-post)))
+    (should-contain "url: /blog/testing/\n" (to-page later-post)))
   (it "outputs page content after break"
     (should-contain "\n\nTesting 2\n" (to-page later-post))))
 
 (describe "assoc-url"
   (it "associates the url"
-    (should= "/blog/test1" (:post-url (assoc-url post-a-rev (url-map urls))))))
+    (should= "/blog/test1/" (:post-url (assoc-url post-a-rev (url-map urls))))))
 
 (def test-fs
   (Jimfs/newFileSystem (Configuration/unix)))
@@ -142,7 +142,7 @@
       (should= (:post-date-gmt post-a) (:post-date-gmt post))
       (should= (:post-content post-a) (:post-content post))))
   (it "associates posts with urls"
-    (should= "/blog/test1" (:post-url (first (read-all-from-db))))))
+    (should= "/blog/test1/" (:post-url (first (read-all-from-db))))))
 
 (describe "filename"
   (it "uses the last portion of the wordpress url as the filename"
