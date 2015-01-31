@@ -38,12 +38,9 @@
 (defn get-page-path [fs id]
   (get-path fs (str id ".pina")))
 
-(defn- as-bytes [st]
-  (bytes (byte-array (map byte st))))
-
 (defn- create-file [path content]
   (Files/write path
-               (as-bytes content)
+               (.getBytes content)
                (into-array OpenOption [StandardOpenOption/CREATE])))
 
 (defn write-page [fs id page]
@@ -58,22 +55,11 @@
 (defn url-map [url-records]
   (into {} (map url-map-entry url-records)))
 
-(defn- read-content-stream [clob-stream]
-  (if-not (nil? clob-stream)
-    (let [sb (StringBuilder.)
-          r (.getCharacterStream clob-stream)]
-      (loop [c (.read r)]
-        (if (neg? c)
-          (str sb)
-          (do
-            (.append sb (char c))
-            (recur (.read r))))))))
-
 (defn- to-post [record]
   {:id (:id record)
    :post-date-gmt (tc/from-sql-time (:post_date_gmt record))
    :post-title (:post_title record)
-   :post-content (read-content-stream (:post_content record))
+   :post-content (:post_content record)
    :post-status (:post_status record)
    :post-parent (:post_parent record)
    :post-type (:post_type record)})
@@ -90,7 +76,9 @@
     (vec (map #(assoc-url % url-map) (query :all-posts db-conn to-post)))))
 
 (defn filename [post]
-  (subs (:post-url post) (+ (.lastIndexOf (:post-url post) "/") 1)))
+  (if (nil? (:post-url post))
+    (str (:id post))
+    (subs (:post-url post) (+ (.lastIndexOf (:post-url post) "/") 1))))
 
 (defn do-import [fs db-conn]
   (doseq [post (latest-posts (read-db db-conn))]

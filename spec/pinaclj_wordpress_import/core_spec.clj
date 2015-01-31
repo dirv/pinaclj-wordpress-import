@@ -109,11 +109,12 @@
    :create true})
 
 (defn- set-up-db [db-conn]
+  (sql/execute! db-conn ["SET MODE MySQL"])
   (sql/db-do-commands db-conn
                       (sql/create-table-ddl :wp_posts
                                             [:id :int "PRIMARY KEY"]
-                                            [:post_title :clob]
-                                            [:post_content :clob]
+                                            [:post_title :varchar]
+                                            [:post_content :varchar]
                                             [:post_date_gmt :datetime]
                                             [:post_parent :int]
                                             [:post_status "varchar(20)"]
@@ -145,7 +146,9 @@
 
 (describe "filename"
   (it "uses the last portion of the wordpress url as the filename"
-    (should= "testing" (filename later-post))))
+    (should= "testing" (filename later-post)))
+  (it "uses the id if no url is found"
+    (should= "102" (filename post-a))))
 
 (defn- import-all []
   (sql/with-db-connection [db-conn db]

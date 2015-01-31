@@ -26,6 +26,7 @@
   {:classname "com.mysql.jdbc.Driver"
    :subprotocol "mysql"
    :subname (str "//" host "/" db-name)
+   :zeroDateTimeBehavior "convertToNull"
    :user user
    :password password})
 
@@ -38,7 +39,6 @@
 
 (defn main [args]
   (let [{:keys [options summary]} (parse-opts args cli-options)]
-    (println options)
     (cond
       (:help options) (println (usage summary))
       :else (do-import options))))
