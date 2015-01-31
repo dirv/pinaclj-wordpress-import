@@ -34,6 +34,10 @@
   :post-url "/blog/testing/"
   :post-parent 101 })
 
+(def draft
+  {:post-date-gmt (t/date-time 2015 1 31) 
+   :post-content "Not yet published" })
+
 (describe "latest-post"
   (it "returns the latest post"
     (should= later-post (latest-post [sample-post later-post]))))
@@ -55,11 +59,9 @@
    :post-content "Updated" })
 (def multi-line
   {:id 106 :post-date-gmt (t/date-time 2015 1 28) :post-content "One\nTwo\nThree\n"})
-(def draft
-  {:id 107 :post-date-gmt (t/date-time 2015 1 31) :post-content "Not yet published" })
 
 (def all-pages
-  [post-a post-a-rev post-b post-b-rev multi-line draft])
+  [post-a post-a-rev post-b post-b-rev multi-line])
 
 (def urls
   [{:object_type "post" :object_id 102 :url "/blog/test1/"}
@@ -78,7 +80,11 @@
   (it "outputs url"
     (should-contain "url: /blog/testing/\n" (to-page later-post)))
   (it "outputs page content after break"
-    (should-contain "\n\nTesting 2\n" (to-page later-post))))
+    (should-contain "\n\nTesting 2\n" (to-page later-post)))
+  (it "does not output published-at if not yet published"
+    (should-not-contain "published-at:" (to-page draft)))
+  (it "does not contain url if not yet published"
+    (should-not-contain "url:" (to-page draft))))
 
 (describe "assoc-url"
   (it "associates the url"
@@ -144,9 +150,7 @@
       (should= (:post-date-gmt post-a) (:post-date-gmt post))
       (should= (:post-content post-a) (:post-content post))))
   (it "associates posts with urls"
-    (should= "/blog/test1/" (:post-url (first (read-all-from-db)))))
-  (it "removes post-date-gmt if no url present"
-    (should= nil (:post-date-gmt (first (filter #(= (:id draft) (:id %)) (read-all-from-db)))))))
+    (should= "/blog/test1/" (:post-url (first (read-all-from-db))))))
 
 (describe "filename"
   (it "uses the last portion of the wordpress url as the filename"

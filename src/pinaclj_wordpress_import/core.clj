@@ -16,18 +16,20 @@
   (map #(latest-post (val %)) (group-by post-id posts)))
 
 (defn to-published-at [post]
-  (str "published-at: " (:post-date-gmt post)))
+  (if-not (nil? (:post-url post))
+    (str "published-at: " (:post-date-gmt post) "\n")))
 
 (defn to-title [post]
-  (str "title: " (:post-title post)))
+  (str "title: " (:post-title post) "\n"))
 
 (defn- to-url [post]
-  (str "url: " (:post-url post)))
+  (if-not (nil? (:post-url post))
+    (str "url: " (:post-url post) "\n")))
 
 (defn to-page [post]
-  (str (to-published-at post) "\n"
-       (to-title post) "\n"
-       (to-url post) "\n"
+  (str (to-published-at post)
+       (to-title post)
+       (to-url post)
        "\n"
        (:post-content post)
        "\n"))
@@ -71,15 +73,9 @@
 (defn- query [id db-conn row-fn]
   (sql/query db-conn [(get queries id)] :row-fn row-fn))
 
-(defn- add-publish-info [url-map post]
-  (let [post-with-url (assoc-url post url-map)]
-    (if (nil? (:post-url post-with-url))
-      (dissoc post-with-url :post-date-gmt)
-      post-with-url)))
-
 (defn read-db [db-conn]
   (let [url-map (url-map (query :post-urls db-conn identity))]
-    (map (partial add-publish-info url-map) (query :all-posts db-conn to-post))))
+    (map #(assoc-url % url-map) (query :all-posts db-conn to-post))))
 
 (defn- trim-slash [post-url]
   (subs post-url 0 (dec (count post-url))))
