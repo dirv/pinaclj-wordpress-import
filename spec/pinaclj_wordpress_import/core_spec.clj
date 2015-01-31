@@ -55,9 +55,11 @@
    :post-content "Updated" })
 (def multi-line
   {:id 106 :post-date-gmt (t/date-time 2015 1 28) :post-content "One\nTwo\nThree\n"})
+(def draft
+  {:id 107 :post-date-gmt (t/date-time 2015 1 31) :post-content "Not yet published" })
 
 (def all-pages
-  [post-a post-a-rev post-b post-b-rev multi-line])
+  [post-a post-a-rev post-b post-b-rev multi-line draft])
 
 (def urls
   [{:object_type "post" :object_id 102 :url "/blog/test1/"}
@@ -142,7 +144,9 @@
       (should= (:post-date-gmt post-a) (:post-date-gmt post))
       (should= (:post-content post-a) (:post-content post))))
   (it "associates posts with urls"
-    (should= "/blog/test1/" (:post-url (first (read-all-from-db))))))
+    (should= "/blog/test1/" (:post-url (first (read-all-from-db)))))
+  (it "removes post-date-gmt if no url present"
+    (should= nil (:post-date-gmt (first (filter #(= (:id draft) (:id %)) (read-all-from-db)))))))
 
 (describe "filename"
   (it "uses the last portion of the wordpress url as the filename"

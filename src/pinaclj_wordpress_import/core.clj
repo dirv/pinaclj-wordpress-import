@@ -71,9 +71,15 @@
 (defn- query [id db-conn row-fn]
   (sql/query db-conn [(get queries id)] :row-fn row-fn))
 
+(defn- add-publish-info [url-map post]
+  (let [post-with-url (assoc-url post url-map)]
+    (if (nil? (:post-url post-with-url))
+      (dissoc post-with-url :post-date-gmt)
+      post-with-url)))
+
 (defn read-db [db-conn]
   (let [url-map (url-map (query :post-urls db-conn identity))]
-    (map #(assoc-url % url-map) (query :all-posts db-conn to-post))))
+    (map (partial add-publish-info url-map) (query :all-posts db-conn to-post))))
 
 (defn- trim-slash [post-url]
   (subs post-url 0 (dec (count post-url))))
