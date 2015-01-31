@@ -105,7 +105,8 @@
 
 (describe "write-page"
   (before
-    (create-file-system))
+    (create-file-system)
+    (create-target-directory test-fs))
   (it "writes pages to disk"
       (write-page test-fs "101" (to-page sample-post))
       (should-contain "Testing" (content (get-path test-fs "101.pina")))))

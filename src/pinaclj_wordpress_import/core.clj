@@ -2,7 +2,10 @@
   (:require [clojure.java.jdbc :as sql]
             [clj-time.coerce :as tc])
   (:import (java.nio.file FileSystems Files LinkOption StandardOpenOption OpenOption)
+           (java.nio.file.attribute FileAttribute)
            (java.io BufferedReader)))
+
+(def target-dir "./pages/")
 
 (defn latest-post [posts]
   (first (reverse (sort-by :post-date-gmt posts))))
@@ -35,7 +38,7 @@
        "\n"))
 
 (defn get-path [fs path-str]
-  (.getPath fs path-str (into-array String [])))
+  (.getPath fs (str target-dir path-str) (into-array String [])))
 
 (defn get-page-path [fs id]
   (get-path fs (str id ".pina")))
@@ -86,7 +89,11 @@
     (let [post-url (trim-slash (:post-url post))]
       (subs post-url (+ (.lastIndexOf post-url "/") 1)))))
 
+(defn create-target-directory [fs]
+  (Files/createDirectories (get-path fs "") (into-array FileAttribute [])))
+
 (defn do-import [fs db-conn]
+  (create-target-directory fs)
   (doseq [post (latest-posts (read-db db-conn))]
     (write-page fs (filename post) (to-page post))))
 
