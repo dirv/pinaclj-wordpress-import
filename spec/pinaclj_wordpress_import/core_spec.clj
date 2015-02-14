@@ -32,6 +32,7 @@
   :post-status "inherit"
   :post-type "revision"
   :post-url "/blog/testing/"
+  :post-terms ["dev" "test"]
   :post-parent 101 })
 
 (def draft
@@ -68,6 +69,12 @@
    {:object_type "post" :object_id 105 :url "/blog/test2/"}
    {:object_type "post" :object_id 106 :url "/blog/multi/"}])
 
+(def terms
+  [{:term_id 1 :name "dev"}])
+
+(def term-relationships
+  [{:object_id 102 :term_taxonomy_id 1}])
+
 (describe "latest-posts"
   (it "returns latest of all posts"
     (should== [post-a-rev post-b-rev] (latest-posts [post-a post-a-rev post-b post-b-rev]))))
@@ -80,15 +87,17 @@
   (it "outputs url"
     (should-contain "url: /blog/testing/\n" (to-page later-post)))
   (it "outputs page content after break"
-    (should-contain "\n\nTesting 2\n" (to-page later-post)))
+    (should-contain "\n---\nTesting 2\n" (to-page later-post)))
   (it "does not output published-at if not yet published"
     (should-not-contain "published-at:" (to-page draft)))
   (it "does not contain url if not yet published"
-    (should-not-contain "url:" (to-page draft))))
+    (should-not-contain "url:" (to-page draft)))
+  (it "outputs tags"
+    (should-contain "tags: dev, test\n" (to-page later-post))))
 
-(describe "assoc-url"
+(describe "assoc-maps"
   (it "associates the url"
-    (should= "/blog/test1/" (:post-url (assoc-url post-a-rev (url-map urls))))))
+    (should= "/blog/test1/" (:post-url (assoc-maps post-a-rev (url-map urls) {})))))
 
 (def test-fs
   (Jimfs/newFileSystem (Configuration/unix)))
@@ -131,11 +140,21 @@
                       (sql/create-table-ddl :wp_urls
                                             [:url "varchar(255)"]
                                             [:object_id :int]
-                                            [:object_type "varchar(20)"]))
+                                            [:object_type "varchar(20)"])
+                      (sql/create-table-ddl :wp_terms
+                                            [:term_id :int "PRIMARY KEY"]
+                                            [:name :varchar])
+                      (sql/create-table-ddl :wp_term_relationships
+                                            [:object_id :int "PRIMARY KEY"]
+                                            [:term_taxonomy_id :int]))
   (doseq [post all-pages]
     (sql/insert! db-conn :wp_posts (to-record post)))
   (doseq [url urls]
-    (sql/insert! db-conn :wp_urls url)))
+    (sql/insert! db-conn :wp_urls url))
+  (doseq [term terms]
+    (sql/insert! db-conn :wp_terms term))
+  (doseq [tr term-relationships]
+    (sql/insert! db-conn :wp_term_relationships tr)))
 
 (defn- read-all-from-db []
   (sql/with-db-connection [db-conn db]
@@ -151,7 +170,9 @@
       (should= (:post-date-gmt post-a) (:post-date-gmt post))
       (should= (:post-content post-a) (:post-content post))))
   (it "associates posts with urls"
-    (should= "/blog/test1/" (:post-url (first (read-all-from-db))))))
+    (should= "/blog/test1/" (:post-url (first (read-all-from-db)))))
+  (it "associates posts with terms"
+    (should= ["dev"] (:post-terms (first (read-all-from-db))))))
 
 (describe "filename"
   (it "uses the last portion of the wordpress url as the filename"

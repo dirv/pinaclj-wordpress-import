@@ -19,21 +19,26 @@
   (map #(latest-post (val %)) (group-by post-id posts)))
 
 (defn to-published-at [post]
-  (if-not (nil? (:post-url post))
+  (when-not (nil? (:post-url post))
     (str "published-at: " (:post-date-gmt post) "\n")))
 
 (defn to-title [post]
   (str "title: " (:post-title post) "\n"))
 
 (defn- to-url [post]
-  (if-not (nil? (:post-url post))
+  (when-not (nil? (:post-url post))
     (str "url: " (:post-url post) "\n")))
+
+(defn- to-tags [post]
+  (when (seq (:post-terms post))
+        (str "tags: " (clojure.string/join ", " (:post-terms post)) "\n")))
 
 (defn to-page [post]
   (str (to-published-at post)
        (to-title post)
        (to-url post)
-       "\n"
+       (to-tags post)
+       "---\n"
        (:post-content post)
        "\n"))
 
@@ -51,14 +56,31 @@
 (defn write-page [fs id page]
   (create-file (get-page-path fs id) page))
 
-(defn assoc-url [post urls]
-  (assoc post :post-url (get urls (post-id post))))
+(defn assoc-maps [post urls terms]
+  (assoc post
+         :post-url (get urls (post-id post))
+         :post-terms (get terms (post-id post))))
 
 (defn- url-map-entry [url-record]
-  {(get url-record :object_id) (get url-record :url)})
+  {(:object_id url-record) (:url url-record)})
 
 (defn url-map [url-records]
   (into {} (map url-map-entry url-records)))
+
+(defn- term-map-entry [term-record]
+  {(:object_id term-record) (:name term-record)})
+
+(defn term-map [term-records]
+  (reduce
+    (fn [term-map {object_id :object_id term :name}]
+        (cond
+          (= "Uncategorized" term) term-map)
+          (contains? term-map object_id)
+            (assoc term-map object_id (conj (get term-map object_id) term))
+        :else
+            (assoc term-map object_id [term]))
+    {}
+    term-records))
 
 (defn- to-post [record]
   {:id (:id record)
@@ -71,14 +93,16 @@
 
 (def queries
   {:all-posts "select * from wp_posts"
+   :post-terms "select tr.object_id, t.name from wp_term_relationships tr join wp_terms t on tr.term_taxonomy_id = t.term_id"
    :post-urls "select object_id, url from wp_urls where object_type='post'" })
 
 (defn- query [id db-conn row-fn]
   (sql/query db-conn [(get queries id)] :row-fn row-fn))
 
 (defn read-db [db-conn]
-  (let [url-map (url-map (query :post-urls db-conn identity))]
-    (map #(assoc-url % url-map) (query :all-posts db-conn to-post))))
+  (let [url-map (url-map (query :post-urls db-conn identity))
+        term-map (term-map (query :post-terms db-conn identity))]
+    (map #(assoc-maps % url-map term-map) (query :all-posts db-conn to-post))))
 
 (defn- trim-slash [post-url]
   (subs post-url 0 (dec (count post-url))))
