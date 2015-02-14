@@ -51,7 +51,7 @@
 (defn- create-file [path content]
   (Files/write path
                (.getBytes content)
-               (into-array OpenOption [StandardOpenOption/CREATE])))
+               (into-array OpenOption [])))
 
 (defn write-page [fs id page]
   (create-file (get-page-path fs id) page))
