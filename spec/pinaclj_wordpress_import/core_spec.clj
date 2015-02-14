@@ -70,10 +70,19 @@
    {:object_type "post" :object_id 106 :url "/blog/multi/"}])
 
 (def terms
-  [{:term_id 1 :name "dev"}])
+  [{:term_id 1 :name "dev"}
+   {:term_id 2 :name "test"}
+   {:term_id 3 :name "Uncategorized"}])
+
+(def term-taxonomy
+  [{:term_taxonomy_id 5 :term_id 1 }
+   {:term_taxonomy_id 6 :term_id 2 }
+   {:term_taxonomy_id 8 :term_id 3 }])
 
 (def term-relationships
-  [{:object_id 102 :term_taxonomy_id 1}])
+  [{:object_id 102 :term_taxonomy_id 5}
+   {:object_id 102 :term_taxonomy_id 6}
+   {:object_id 102 :term_taxonomy_id 8}])
 
 (describe "latest-posts"
   (it "returns latest of all posts"
@@ -145,7 +154,10 @@
                                             [:term_id :int "PRIMARY KEY"]
                                             [:name :varchar])
                       (sql/create-table-ddl :wp_term_relationships
-                                            [:object_id :int "PRIMARY KEY"]
+                                            [:object_id :int]
+                                            [:term_taxonomy_id :int])
+                      (sql/create-table-ddl :wp_term_taxonomy
+                                            [:term_id :int]
                                             [:term_taxonomy_id :int]))
   (doseq [post all-pages]
     (sql/insert! db-conn :wp_posts (to-record post)))
@@ -154,7 +166,9 @@
   (doseq [term terms]
     (sql/insert! db-conn :wp_terms term))
   (doseq [tr term-relationships]
-    (sql/insert! db-conn :wp_term_relationships tr)))
+    (sql/insert! db-conn :wp_term_relationships tr))
+  (doseq [tt term-taxonomy]
+    (sql/insert! db-conn :wp_term_taxonomy tt)))
 
 (defn- read-all-from-db []
   (sql/with-db-connection [db-conn db]
@@ -172,7 +186,7 @@
   (it "associates posts with urls"
     (should= "/blog/test1/" (:post-url (first (read-all-from-db)))))
   (it "associates posts with terms"
-    (should= ["dev"] (:post-terms (first (read-all-from-db))))))
+    (should= ["dev" "test"] (:post-terms (first (read-all-from-db))))))
 
 (describe "filename"
   (it "uses the last portion of the wordpress url as the filename"

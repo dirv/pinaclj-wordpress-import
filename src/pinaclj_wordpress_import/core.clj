@@ -74,11 +74,11 @@
   (reduce
     (fn [term-map {object_id :object_id term :name}]
         (cond
-          (= "Uncategorized" term) term-map)
+          (= "Uncategorized" term) term-map
           (contains? term-map object_id)
             (assoc term-map object_id (conj (get term-map object_id) term))
         :else
-            (assoc term-map object_id [term]))
+            (assoc term-map object_id [term])))
     {}
     term-records))
 
@@ -93,7 +93,7 @@
 
 (def queries
   {:all-posts "select * from wp_posts"
-   :post-terms "select tr.object_id, t.name from wp_term_relationships tr join wp_terms t on tr.term_taxonomy_id = t.term_id"
+   :post-terms "select object_id, t.name from wp_term_relationships tr join wp_term_taxonomy tt on tt.term_taxonomy_id=tr.term_taxonomy_id join wp_terms t on tt.term_id=t.term_id"
    :post-urls "select object_id, url from wp_urls where object_type='post'" })
 
 (defn- query [id db-conn row-fn]

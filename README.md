@@ -19,5 +19,11 @@ sed -i "" 's/\[ruby[ a-z="]*\]/``ruby/g' *.pina
 sed -i "" 's/\[\/ruby\]/``/g' *.pina
 sed -i "" 's/\[\/code\]/``/g' *.pina
 sed -i "" 's/\[code\]/``/g' *.pina
+
+sed -i "" 's/&quot;/'/g' *.pina
+sed -i "" 's/&gt;/>/g' *.pina
+sed -i "" 's/&lt;/</g' *.pina
+sed -i "" 's/&lsquo;/''/g' *.pina
+sed -i "" 's/&rsquo;/''/g' *.pina>
 ```
 
